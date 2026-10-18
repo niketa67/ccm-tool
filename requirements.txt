@@ -1,0 +1,17 @@
+# Continuous Controls Monitoring (CCM) Tool - runtime and dev dependencies
+# Install with:  pip install -r requirements.txt
+
+# --- Core data stack ---
+pandas>=2.1.0
+numpy>=1.26.0
+PyYAML>=6.0.1
+
+# --- Dashboard ---
+streamlit>=1.36.0
+plotly>=5.22.0
+
+# --- Synthetic data ---
+Faker>=25.0.0
+
+# --- Testing ---
+pytest>=8.2.0

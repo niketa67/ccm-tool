@@ -1,0 +1,202 @@
+# =============================================================================
+# Continuous Controls Monitoring (CCM) - Control Catalogue
+# =============================================================================
+# Every control is driven entirely by this file. The Python class implements the
+# *logic*; this file implements the *policy* (thresholds, severity, on/off).
+#
+# To tune a control without touching code, edit `parameters` below.
+# To disable a control, set `enabled: false`.
+#
+# Schema (per control id):
+#   enabled:    bool   - skip the control entirely when false
+#   severity:   str    - Low | Medium | High | Critical (overrides class default)
+#   parameters: dict   - control-specific thresholds
+# =============================================================================
+
+meta:
+  version: "1.0"
+  owner: "IT Risk & Controls"
+  # Severity ordering used for sorting / dashboard colour coding.
+  severity_order: [Critical, High, Medium, Low]
+
+# Default run-wide settings, overridable per control where documented.
+defaults:
+  # Number of days grace applied to "as of" evaluations (e.g. last login)
+  timezone: "UTC"
+
+controls:
+
+  CC-01:
+    name: "Terminated Employee Active Accounts"
+    enabled: true
+    severity: Critical
+    parameters:
+      # Statuses in hr_employees.status treated as no-longer-employed.
+      terminated_statuses: ["Terminated"]
+      # Also flag accounts whose last_login_date is this many days *after*
+      # the employee's termination_date (post-termination access evidence).
+      flag_post_termination_login: true
+      post_termination_grace_days: 0
+    description: >
+      Employees who have left the organisation must not retain logical access.
+      This control identifies terminated employees whose accounts remain Active,
+      or whose accounts show authentication activity after the termination date.
+    risk_category: "Logical Access Management"
+    framework_mapping:
+      - "ISO 27001 A.5.18 (Access Rights)"
+      - "SOX ITGC - Logical Access / User Deprovisioning"
+      - "NIST SP 800-53 AC-2(3) (Disable Accounts)"
+
+  CC-02:
+    name: "Segregation of Duties Conflicts"
+    enabled: true
+    severity: High
+    parameters:
+      # Conflicting role pairs live in config/sod_rules.yaml
+      sod_rules_file: "config/sod_rules.yaml"
+      # Role matching is case-insensitive exact-matching on role_name.
+      case_sensitive: false
+      # When true, only active accounts are evaluated.
+      active_accounts_only: true
+    description: >
+      A single user must not be able to both initiate and approve the same
+      business activity. This control evaluates every account's role
+      assignments against a curated catalogue of conflicting role pairs
+      (e.g. "Payment Creator" + "Payment Approver").
+    risk_category: "Segregation of Duties"
+    framework_mapping:
+      - "ISO 27001 A.5.3 (Segregation of Duties)"
+      - "SOX ITGC - Segregation of Duties"
+      - "NIST SP 800-53 AC-5 (Separation of Duties)"
+
+  CC-03:
+    name: "Privileged Accounts Without MFA"
+    enabled: true
+    severity: Critical
+    parameters:
+      # Account types considered privileged for the purposes of this control.
+      privileged_account_types: ["Privileged"]
+      # Extend coverage to Service accounts if your policy requires it.
+      include_service_accounts: false
+      # Only active accounts matter; a disabled account is not a live risk.
+      active_accounts_only: true
+    description: >
+      Accounts with elevated entitlements are the highest-value target for
+      credential theft. Every active privileged account must be protected by
+      multi-factor authentication.
+    risk_category: "Privileged Access Management"
+    framework_mapping:
+      - "ISO 27001 A.8.5 (Secure Authentication)"
+      - "SOX ITGC - Logical Access"
+      - "NIST SP 800-53 IA-2(1) (Multi-Factor Authentication)"
+
+  CC-04:
+    name: "Dormant Accounts"
+    enabled: true
+    severity: Medium
+    parameters:
+      dormant_days: 90
+      # Accounts that never logged in: measure from created_date instead.
+      use_created_date_if_never_logged_in: true
+      active_accounts_only: true
+      # Service accounts legitimately have no interactive login - exclude them.
+      exclude_account_types: ["Service"]
+    description: >
+      Active accounts that have not authenticated within the dormancy window
+      represent unnecessary attack surface and should be disabled or removed.
+    risk_category: "Logical Access Management"
+    framework_mapping:
+      - "ISO 27001 A.5.15 (Access Control)"
+      - "SOX ITGC - Logical Access"
+      - "NIST SP 800-53 AC-2(3) (Disable Inactive Accounts)"
+
+  CC-05:
+    name: "Stale Privileged Access Reviews"
+    enabled: true
+    severity: High
+    parameters:
+      review_interval_days: 180
+      privileged_account_types: ["Privileged"]
+      # Accounts never reviewed at all are always exceptions.
+      flag_never_reviewed: true
+      active_accounts_only: true
+    description: >
+      Privileged entitlements must be recertified on a recurring cadence.
+      This control flags privileged accounts whose last access review is
+      older than the review interval, or that have never been reviewed.
+    risk_category: "Access Certification"
+    framework_mapping:
+      - "ISO 27001 A.5.18 (Access Rights Review)"
+      - "SOX ITGC - Access Recertification"
+      - "NIST SP 800-53 AC-2(j) (Review of Account Usage)"
+
+  CC-06:
+    name: "Shared / Generic Account Usage"
+    enabled: true
+    severity: Medium
+    parameters:
+      # Explicit shared account types are always in scope.
+      shared_account_types: ["Shared"]
+      # Username patterns that indicate a generic/non-attributable identity.
+      generic_username_patterns:
+        - "(?i)^admin$"
+        - "(?i)^test"
+        - "(?i)^shared"
+        - "(?i)^svc_generic"
+        - "(?i)^generic"
+        - "(?i)^tmp"
+      active_accounts_only: true
+    description: >
+      Shared or generic accounts break non-repudiation: activity cannot be
+      attributed to a named individual. Active shared accounts are flagged for
+      remediation (e.g. conversion to named accounts or a vaulting solution).
+    risk_category: "Identity & Non-Repudiation"
+    framework_mapping:
+      - "ISO 27001 A.5.16 (Identity Management)"
+      - "SOX ITGC - Logical Access"
+      - "NIST SP 800-53 IA-4 / AC-2 (Account Management)"
+
+  CC-07:
+    name: "Orphan Accounts"
+    enabled: true
+    severity: High
+    parameters:
+      # 'Service' accounts are machine identities and legitimately have no HR
+      # counterpart; they are excluded unless explicitly included below.
+      exclude_account_types: ["Service"]
+      allowlist_usernames:
+        - "svc_generic"
+      active_accounts_only: true
+    description: >
+      An active account that cannot be tied back to a current HR record has no
+      accountable owner - a classic indicator of deprovisioning failure,
+      a rogue account, or a contractor whose record was never created.
+    risk_category: "Logical Access Management"
+    framework_mapping:
+      - "ISO 27001 A.5.18 (Access Rights)"
+      - "SOX ITGC - Logical Access"
+      - "NIST SP 800-53 AC-2 (Account Management)"
+
+  CC-08:
+    name: "Excessive Failed Logins (Brute Force)"
+    enabled: true
+    severity: Medium
+    parameters:
+      # Threshold: more than `max_failed_attempts` failures ...
+      max_failed_attempts: 5
+      # ... inside a rolling `window_hours` window, with no success in between.
+      window_hours: 1
+      # Ignore successes when grouping (true = classic brute-force pattern of
+      # N consecutive failures regardless of interleaved logins).
+      consecutive_failures_only: false
+      # Only look at the trailing N days of logs so old noise doesn't persist.
+      lookback_days: 30
+    description: >
+      Repeated authentication failures from a single account in a short window
+      indicate password-spraying or brute-force activity, or a misconfigured
+      integration. Each qualifying burst is reported as an exception.
+    risk_category: "Security Monitoring"
+    framework_mapping:
+      - "ISO 27001 A.8.16 (Monitoring Activities)"
+      - "SOX ITGC - Logical Access"
+      - "NIST SP 800-53 AC-7 (Unsuccessful Logon Attempts)"

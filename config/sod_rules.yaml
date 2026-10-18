@@ -1,0 +1,87 @@
+# =============================================================================
+# Segregation of Duties (SoD) Conflict Rules
+# =============================================================================
+# Consumed by control CC-02.
+#
+# Each rule is a mutually-incompatible pair of roles: granting both to the same
+# account lets one individual both execute and conceal a transaction, which is
+# the core financial-reporting risk ITGC testing looks for.
+#
+# Fields:
+#   id          - stable identifier, surfaces in the evidence report
+#   role_a      - first role in the conflicting pair
+#   role_b      - second role in the conflicting pair
+#   system      - business system family the rule applies to ("*" = any)
+#   risk        - short description of the fraud/error scenario
+#   severity    - Low | Medium | High | Critical
+#   framework   - control objective this rule supports
+# =============================================================================
+
+version: "1.0"
+owner: "IT Risk & Controls"
+
+rules:
+
+  - id: SOD-001
+    role_a: "Payment Creator"
+    role_b: "Payment Approver"
+    system: "*"
+    risk: "User can create and approve the same outgoing payment (fictitious vendor fraud)."
+    severity: Critical
+    framework: "SOX ITGC - Payment Cycle"
+
+  - id: SOD-002
+    role_a: "Vendor Master Editor"
+    role_b: "Invoice Approver"
+    system: "*"
+    risk: "User can create a vendor then approve invoices against it (shell-company fraud)."
+    severity: Critical
+    framework: "SOX ITGC - Procure to Pay"
+
+  - id: SOD-003
+    role_a: "Developer"
+    role_b: "Production Deployer"
+    system: "*"
+    risk: "User can write code and push it to production without independent review."
+    severity: High
+    framework: "ISO 27001 A.8.31 - Change Management"
+
+  - id: SOD-004
+    role_a: "Journal Entry Preparer"
+    role_b: "Journal Entry Approver"
+    system: "ERP"
+    risk: "User can post and approve manual journal entries (financial statement manipulation)."
+    severity: Critical
+    framework: "SOX ITGC - Record to Report"
+
+  - id: SOD-005
+    role_a: "Payroll Administrator"
+    role_b: "Payroll Approver"
+    system: "ERP"
+    risk: "User can alter payroll data and approve the resulting run (ghost-employee fraud)."
+    severity: High
+    framework: "SOX ITGC - Payroll"
+
+  - id: SOD-006
+    role_a: "Customer Master Editor"
+    role_b: "Credit Approver"
+    system: "CRM"
+    risk: "User can amend customer credit data and approve credit limits."
+    severity: Medium
+    framework: "SOX ITGC - Order to Cash"
+
+  - id: SOD-007
+    role_a: "Security Administrator"
+    role_b: "Audit Log Reviewer"
+    system: "*"
+    risk: "User can alter access rights and then edit the audit trail that records it."
+    severity: High
+    framework: "ISO 27001 A.8.15 - Logging"
+
+  - id: SOD-008
+    role_a: "Bank Reconciliation Preparer"
+    role_b: "Bank Reconciliation Approver"
+    system: "ERP"
+    risk: "User can prepare and approve bank reconciliations, concealing cash misstatements."
+    severity: High
+    framework: "SOX ITGC - Treasury"

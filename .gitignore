@@ -1,0 +1,42 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Tooling caches ----
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ---- Application artefacts ----
+ccm.db
+ccm.db-journal
+ccm.db-wal
+reports/
+*.log
+
+# ---- Generated data ── rebuild with `python run_controls.py --generate-data` ----
+data/raw/
+data/sample/
+
+# ---- IDE / OS noise ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
